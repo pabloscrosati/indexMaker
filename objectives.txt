@@ -1,0 +1,21 @@
+[X] Read a series of GRO files                      PS
+[X] Dictionary of side chain heavy atoms            PS
+[X] Gdm center atom                                 PS
+[X] Adjustable cutoff distance                      PS
+[X] Parallel programming                            PS
+[ ] Exclusion criteria with COM                     KN
+[ ] Generate pair list of residue - Gdm contacts
+[ ] Create index file for each configuration
+[ ] Time series extraction of Gdm contacts
+[ ] Frequency distribution
+
+1. Create list of all side chain heavy atoms, referenced from dictionary
+    a. If list exists as file, import file, do not create
+2. Create initial exclusion zone
+3. Distance calculation between each side chain heavy atom and each Gdm center atom
+    a. Parallelize this calculation, divided by equally by threads
+    b. Multiple residue
+4. Generate pair list for residue - Gdm pairs
+5. Generate GROMACS-compatible index file
+6. Extract time series data
+7. Generate summary frequency distribution plot
