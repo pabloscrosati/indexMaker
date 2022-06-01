@@ -2,10 +2,10 @@
 [X] Dictionary of side chain heavy atoms            PS
 [X] Gdm center atom                                 PS
 [X] Adjustable cutoff distance                      PS
-[X] Parallel programming                            PS
-[ ] Exclusion criteria with COM                     KN
-[ ] Generate pair list of residue - Gdm contacts
-[ ] Create index file for each configuration
+[-] Parallel programming                            PS
+[X] Exclusion criteria with COM                     KN, PS
+[X] Generate pair list of residue - Gdm contacts    PS
+[X] Create index file for each configuration        PS
 [ ] Time series extraction of Gdm contacts
 [ ] Frequency distribution
 
@@ -19,3 +19,4 @@
 5. Generate GROMACS-compatible index file
 6. Extract time series data
 7. Generate summary frequency distribution plot
+
