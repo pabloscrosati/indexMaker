@@ -7,6 +7,8 @@ __description__ = """
 Automated extraction of Protein-Gdm contacts.
 """
 
+debug = "debug"
+
 # Global variables
 coarse_cutoff = 2
 short_cutoff = 0.5
@@ -104,7 +106,7 @@ def find_protein_chain(resname, thinned_list=[]):
         protein_chain = textwrap.wrap(principal_string[:residue_pattern], 3)
         number_of_chains = principal_string.count(principal_string[:residue_pattern])
         print("%s protein chains found!" % number_of_chains)
-        indices = []
+        indices = [0]
         for i in range(number_of_chains):
             indices.append((len(protein_chain) - 1) + (i * len(protein_chain)))
         return indices, number_of_chains
@@ -196,23 +198,36 @@ if __name__ == "__main__":
 
     # Find multiple protein chains
     protein_indices, number_of_chains = find_protein_chain(resname)
-    if number_of_chains > 1:
-        for chain in range(number_of_chains):
-            print("ell")
-
-    # THIS IS WHERE I AM, ADDING MULTIPLE PROTEIN LOOP >> SINGLE LOOP WORKS
-
-    average_pos = average_position(x_c[0:protein_indices[0]], y_c[0:protein_indices[0]], z_c[0:protein_indices[0]])
-
-    cutoff_distance = max_distance_prefilter(x_c[0:protein_indices[0]], y_c[0:protein_indices[0]],
-                                             z_c[0:protein_indices[0]], average_pos[0], average_pos[1], average_pos[2])
 
     guan_indices = find_guan_indices(resname)
 
-    success_guan = close_guan_indices = guan_index_prefilter(average_pos[0], average_pos[1], average_pos[2], x_c, y_c,
-                                                             z_c, atomname, guan_indices, cutoff_distance)
+    if number_of_chains > 1:
+        for chain in range(number_of_chains):
+            if chain == 0:
+                modifier = 0
+            else:
+                modifier = 1
+            average_pos = average_position(x_c[(protein_indices[chain]+modifier):protein_indices[chain+1]], y_c[(protein_indices[chain]+modifier):protein_indices[chain+1]], z_c[(protein_indices[chain]+modifier):protein_indices[chain+1]])
+            cutoff_distance = max_distance_prefilter(x_c[(protein_indices[chain]+modifier):protein_indices[chain+1]], y_c[(protein_indices[chain]+modifier):protein_indices[chain+1]], z_c[(protein_indices[chain]+modifier):protein_indices[chain+1]], average_pos[0], average_pos[1], average_pos[2])
 
-    pair_list = residue_guan_pairs(x_c, y_c, z_c, (0, protein_indices[0]), guan_indices, resid, resname, atomname, success_guan)
+            success_guan = guan_index_prefilter(average_pos[0], average_pos[1], average_pos[2], x_c, y_c, z_c, atomname, guan_indices, cutoff_distance)
+
+            pair_list = residue_guan_pairs(x_c, y_c, z_c, (protein_indices[chain]+modifier, protein_indices[chain+1]), guan_indices, resid, resname, atomname, success_guan)
+
+
+    # THIS IS WHERE I AM, ADDING MULTIPLE PROTEIN LOOP >> SINGLE LOOP WORKS
+    #
+    # average_pos = average_position(x_c[0:protein_indices[0]], y_c[0:protein_indices[0]], z_c[0:protein_indices[0]])
+    #
+    # cutoff_distance = max_distance_prefilter(x_c[0:protein_indices[0]], y_c[0:protein_indices[0]],
+    #                                          z_c[0:protein_indices[0]], average_pos[0], average_pos[1], average_pos[2])
+    #
+    # guan_indices = find_guan_indices(resname)
+    #
+    # success_guan = close_guan_indices = guan_index_prefilter(average_pos[0], average_pos[1], average_pos[2], x_c, y_c,
+    #                                                          z_c, atomname, guan_indices, cutoff_distance)
+    #
+    # pair_list = residue_guan_pairs(x_c, y_c, z_c, (0, protein_indices[0]), guan_indices, resid, resname, atomname, success_guan)
 
     execution_end = time.perf_counter()
     print(f"Program executed in {round(execution_end - execution_start, 5)} seconds.")

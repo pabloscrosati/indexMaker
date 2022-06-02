@@ -6,6 +6,7 @@
 [X] Exclusion criteria with COM                     KN, PS
 [X] Generate pair list of residue - Gdm contacts    PS
 [X] Create index file for each configuration        PS
+[X] Multiple protein handler                        PS
 [ ] Time series extraction of Gdm contacts
 [ ] Frequency distribution
 
