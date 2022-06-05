@@ -1,0 +1,304 @@
+# Header section
+__author__ = "Kirsty Ng and Pablo M. Scrosati"
+__version__ = "dev_0.3"
+__update__ = "June 2, 2022"
+__title__ = "Program Name Pending"
+__description__ = """
+Automated extraction of Protein-Gdm contacts.
+"""
+
+debug = "debug"
+
+# Global variables
+coarse_cutoff = 2
+short_cutoff = 0.5
+
+# Import dependencies
+import glob, os, textwrap, numpy, time, argparse, sys, concurrent.futures
+
+# Dictionary for residue heavy atoms
+heavyAtoms = {
+    "GUAN": "C",
+    "LYS": "CE",
+    "GLU": "CD",
+    "PRO": "CG",
+    "ASP": "CG",
+    "PHE": "CZ",
+    "GLN": "CD",
+    "THR": "CG2",
+    "ARG": "CZ",
+    "ASN": "CG",
+    "TYR": "CZ",
+    "TRP": "CE2",
+    "HIS": "CE1",
+    "ALA": "CB",
+    "GLY": "CA",
+    "SER": "CB",
+    "VAL": "CB",
+    "LEU": "CG",
+    "ILE": "CD",
+    "MET": "CE"
+}
+
+# Functions
+# Print header information on launch of program
+def program_launch(author=__author__, version=__version__, title=__title__, update=__update__):
+    header_length = 45  # Full length of header is header_length + 2 characters
+    print("|" + ("-" * header_length) + "|")
+    print("|" + title.center(header_length) + "|")
+    print("|" + ("Written by: " + author).center(header_length) + "|")
+    print("|" + ("Version: " + version).center(header_length) + "|")
+    print("|" + ("Last updated: " + update).center(header_length) + "|")
+    print("|" + ("-" * header_length) + "|")
+    return
+
+def cmd_parse(argv=None, prog_description=__description__):
+    parser = argparse.ArgumentParser(description=prog_description)
+    parser.add_argument('-f', '--file-pattern', metavar='', help='filename pattern', required=True)
+    parser.add_argument('-d', '--directory', metavar='', help='directory containing files', required=True)
+    parser.add_argument('-o', '--output', metavar='', help='output file')
+    return parser.parse_args(argv)
+
+# Generate list of filenames matching pattern
+def file_pattern(pattern, folder, files=[]):
+    if not os.path.isdir(os.path.join(os.curdir, folder)):
+        print("Folder path supplied does not exist!")
+        print("Check that you have the correct relative path!")
+        exit(1)
+    for f in glob.glob(os.path.join(os.curdir, folder, (pattern + "*.gro"))):
+        files.append(f)
+    return files
+
+# Open file and return as list
+def file_open(file):
+    with open(file) as f:
+        config = [line.rstrip() for line in f]
+    return config
+
+# Parse list in GRO file format and return components
+def gro_parse(gro_file):
+    resid, resname, atomname, atomnum, x_c, y_c, z_c = [], [], [], [], [], [], []
+    title, num_atoms, box_size = gro_file[0], gro_file[1], gro_file[-1]
+    for i in gro_file:
+        if i == title or i == num_atoms or i == box_size:
+            pass
+        else:
+            resid.append(i[0:5].strip())
+            resname.append(i[5:10].strip())
+            atomname.append(i[10:15].strip())
+            atomnum.append(i[15:20].strip())
+            x_c.append(i[20:28].strip())
+            y_c.append(i[28:36].strip())
+            z_c.append(i[36:44].strip())
+    return title.strip(), num_atoms.strip(), box_size.strip(), resid, resname, atomname, atomnum, x_c, y_c, z_c
+
+# Will find unique protein chains based on pattern matching
+def find_protein_chain(resname, file):
+    thinned_list = []
+    for i in resname:
+        if i in heavyAtoms and i != "GUAN":
+            thinned_list.append(i)
+    principal_string = ''.join(thinned_list)
+    residue_pattern = (principal_string + principal_string).find(principal_string, 1, -1)
+    if residue_pattern == -1:
+        print("Multiple proteins not found!")
+        return [len(thinned_list) - 1]
+    else:
+        protein_chain = textwrap.wrap(principal_string[:residue_pattern], 3)
+        number_of_chains = principal_string.count(principal_string[:residue_pattern])
+        print("%s protein chains found in %s" % (number_of_chains, os.path.split(file)[-1]))
+        indices = [0]
+        for i in range(number_of_chains):
+            indices.append((len(protein_chain) - 1) + (i * len(protein_chain)))
+        return indices, number_of_chains
+
+# Average protein position
+def average_position(x_coord, y_coord, z_coord):
+    ave_x = sum(float(x) for x in x_coord) / len(x_coord)
+    ave_y = sum(float(y) for y in y_coord) / len(y_coord)
+    ave_z = sum(float(z) for z in z_coord) / len(z_coord)
+    return ave_x, ave_y, ave_z
+
+# Step 1 of the prefilter; finds max distance and sets cutoff
+def max_distance_prefilter(x_list, y_list, z_list, x_ave, y_ave, z_ave, cutoff=coarse_cutoff):
+    distance_log = []
+    x_array = numpy.array(x_list).astype(float)
+    y_array = numpy.array(y_list).astype(float)
+    z_array = numpy.array(z_list).astype(float)
+    x_ave_array = numpy.array(x_ave).astype(float)
+    y_ave_array = numpy.array(y_ave).astype(float)
+    z_ave_array = numpy.array(z_ave).astype(float)
+    coordinate_array = numpy.stack((x_array, y_array, z_array), axis=1)
+    average_array = numpy.stack((x_ave_array, y_ave_array, z_ave_array))
+    twod_array = numpy.expand_dims(average_array, axis=0)
+    for i in range(len(coordinate_array)):
+        distance = numpy.linalg.norm(coordinate_array[i] - twod_array)
+        distance_log.append(distance)
+    max_distance = max(distance_log)
+    buffered_max_distance = max_distance + float(cutoff)
+    return buffered_max_distance
+
+# Find the indices of all GUAN residues
+def find_guan_indices(resname):
+    indices = [i for i, x in enumerate(resname) if x == "GUAN"]
+    return min(indices), max(indices)
+
+# Find GUAN residues within cutoff distance
+def guan_index_prefilter(x_ave, y_ave, z_ave, coord_x, coord_y, coord_z, atomname, guan_index, cutoff):
+    success_guan_list = []
+    guanonly = atomname[guan_index[0]:guan_index[1] + 1]
+    x_ave_array = numpy.array(x_ave).astype(float)
+    y_ave_array = numpy.array(y_ave).astype(float)
+    z_ave_array = numpy.array(z_ave).astype(float)
+    average_array = numpy.stack((x_ave_array, y_ave_array, z_ave_array))
+    twod_array = numpy.expand_dims(average_array, axis=0)
+    guan_x_array = numpy.array(coord_x[guan_index[0]:guan_index[1] + 1]).astype(float)
+    guan_y_array = numpy.array(coord_y[guan_index[0]:guan_index[1] + 1]).astype(float)
+    guan_z_array = numpy.array(coord_z[guan_index[0]:guan_index[1] + 1]).astype(float)
+    guan_array = numpy.stack((guan_x_array, guan_y_array, guan_z_array), axis=1)
+    for i in range(len(guan_array)):
+        if guanonly[i] == heavyAtoms["GUAN"]:
+            distance = numpy.linalg.norm(guan_array[i] - twod_array)
+            if distance < cutoff:
+                success_guan_list.append(i + guan_index[0])
+    return success_guan_list
+
+def residue_guan_pairs(coord_x, coord_y, coord_z, prot_index, guan_index, resid, resname, atomname, success_guan, file, chain,
+                       cutoff=short_cutoff):
+    prot_x_array = numpy.array(coord_x[prot_index[0]:prot_index[1]]).astype(float)
+    prot_y_array = numpy.array(coord_y[prot_index[0]:prot_index[1]]).astype(float)
+    prot_z_array = numpy.array(coord_z[prot_index[0]:prot_index[1]]).astype(float)
+    prot_array = numpy.stack((prot_x_array, prot_y_array, prot_z_array), axis=1)
+    guan_x_array = numpy.array(coord_x[guan_index[0]:guan_index[1] + 1]).astype(float)
+    guan_y_array = numpy.array(coord_y[guan_index[0]:guan_index[1] + 1]).astype(float)
+    guan_z_array = numpy.array(coord_z[guan_index[0]:guan_index[1] + 1]).astype(float)
+    guan_array = numpy.stack((guan_x_array, guan_y_array, guan_z_array), axis=1)
+    distance_pairs = ["%s\t%s\t" % (os.path.split(file)[-1], chain + 1), "residue\tguan\tdistance"]
+    guan_gro_string = ""
+    for i in range(len(prot_array)):
+        if resname[i] in heavyAtoms and atomname[i] == heavyAtoms[resname[i]]:
+            for n in success_guan:
+                distance = numpy.linalg.norm(prot_array[i] - guan_array[n - guan_index[0]])
+                if distance < cutoff:
+                    distance_pairs.append(resid[i] + resname[i] + '\t' + resid[n] + resname[n] + "\t" + "%.4f" %
+                                          distance)
+                    guan_gro_string = guan_gro_string + str(n + 1).rjust(6) + str(n + 2).rjust(6) + str(n + 3).rjust(
+                        6) + \
+                                      str(n + 4).rjust(6) + str(n + 5).rjust(6) + str(n + 6).rjust(6) + str(
+                        n + 7).rjust(6) + \
+                                      str(n + 8).rjust(6) + str(n + 9).rjust(6) + str(n + 10).rjust(6)
+    gromacs_index = textwrap.wrap(guan_gro_string, 60)
+    gromacs_index.insert(0, "[ Gdm_Index ]")
+    return distance_pairs, gromacs_index
+
+# Write list to file
+def write_file(output_list, filename):
+    with open(filename, 'w') as f:
+        for item in output_list:
+            f.write("%s\n" % item)
+    return
+
+def main_single_thread(file):
+    # Open file, interpret and extract contents
+    gro_file = file_open(file)
+    _, _, _, resid, resname, atomname, _, x_c, y_c, z_c = gro_parse(gro_file)
+
+    # Find multiple protein chains
+    protein_indices, number_of_chains = find_protein_chain(resname, file)
+
+    # Find where guanidinium residues start and end
+    guan_indices = find_guan_indices(resname)
+
+    # Execution handler for multiple protein chains
+    export_pair_list, export_gro_index = [], []
+    if number_of_chains > 1:
+        for chain in range(number_of_chains):
+            if chain == 0:
+                modifier = 0
+            else:
+                modifier = 1
+            average_pos = average_position(x_c[(protein_indices[chain] + modifier):protein_indices[chain + 1]],
+                                           y_c[(protein_indices[chain] + modifier):protein_indices[chain + 1]],
+                                           z_c[(protein_indices[chain] + modifier):protein_indices[chain + 1]])
+            cutoff_distance = max_distance_prefilter(
+                x_c[(protein_indices[chain] + modifier):protein_indices[chain + 1]],
+                y_c[(protein_indices[chain] + modifier):protein_indices[chain + 1]],
+                z_c[(protein_indices[chain] + modifier):protein_indices[chain + 1]],
+                average_pos[0], average_pos[1], average_pos[2])
+            success_guan = guan_index_prefilter(average_pos[0], average_pos[1], average_pos[2], x_c, y_c, z_c, atomname,
+                                                guan_indices, cutoff_distance)
+            pair_list, gro_index = residue_guan_pairs(x_c, y_c, z_c,
+                                                      (protein_indices[chain] + modifier, protein_indices[chain + 1]),
+                                                      guan_indices, resid, resname, atomname, success_guan, file, chain)
+            export_pair_list.append(pair_list)
+            export_gro_index.append(gro_index)
+            write_file(pair_list, "%s_output_protein_chain_%s.txt" % (os.path.join(os.path.split(file)[0], os.path.split(file)[-1].split(".")[0]), chain + 1))
+
+        # Need to pad and join lists of lists into one list for export
+
+        return export_pair_list, export_gro_index
+    else:
+        average_pos = average_position(x_c[0:protein_indices[0]], y_c[0:protein_indices[0]], z_c[0:protein_indices[0]])
+        cutoff_distance = max_distance_prefilter(x_c[0:protein_indices[0]], y_c[0:protein_indices[0]],
+                                                 z_c[0:protein_indices[0]], average_pos[0], average_pos[1],
+                                                 average_pos[2])
+        success_guan = guan_index_prefilter(average_pos[0], average_pos[1], average_pos[2], x_c, y_c, z_c, atomname,
+                                            guan_indices, cutoff_distance)
+        pair_list, gro_index = residue_guan_pairs(x_c, y_c, z_c, (0, protein_indices[0]), guan_indices, resid, resname,
+                                                  atomname, success_guan, file, chain='1')
+        write_file(pair_list, "%s_output.txt" % (os.path.join(os.path.split(file)[0], os.path.split(file)[-1].split(".")[0])))
+        export_pair_list.append(pair_list)
+        export_gro_index.append(gro_index)
+        return export_pair_list, export_gro_index
+
+# Pad test lists with blanks and equalize lengths
+def list_pad(list):
+    max_list_length = max(len(x) for x in list)
+
+
+
+
+if __name__ == "__main__":
+    execution_start = time.perf_counter()
+    program_launch()
+
+    # Command-line argument parser
+    args = cmd_parse(sys.argv[1:])
+    print("Command line arguments:", ' '.join(sys.argv[0:]))
+
+    # Find all GRO files contained within folder
+    gro_files = file_pattern(args.file_pattern, args.directory)
+
+    # Execute primary program with multiple processes handling individual files
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        executed_process = [executor.submit(main_single_thread, process_file) for process_file in gro_files]
+
+    # Gather primary program output from each process
+    time_list = []
+    gro_index_list = []
+    for f in concurrent.futures.as_completed(executed_process):
+        time_list.append(f.result()[0])
+        gro_index_list.append(f.result()[1])
+        print(f.result()[0])
+
+    # Formatter function
+
+    max_list_length = max(len(x) for x in time_list)
+    final_list = []
+    final_list.extend([''] * max_list_length)
+    for i in range(len(time_list)):
+        if len(time_list[i]) < max_list_length:
+            time_list[i].extend([''] * (max_list_length - len(time_list[i])))
+
+
+    for i in range(len(time_list)):
+        for n in range(max_list_length):
+            if time_list[i][n] == '':
+                final_list[n] = final_list[n] + "\t\t" + "\t"
+            else:
+                final_list[n] = final_list[n] + time_list[i][n] + "\t"
+
+    write_file(final_list, "test.txt")
+
+    execution_end = time.perf_counter()
+    print(f"Program executed in {round(execution_end - execution_start, 5)} seconds.")

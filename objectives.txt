@@ -1,14 +1,15 @@
-[X] Read a series of GRO files                      PS
-[X] Dictionary of side chain heavy atoms            PS
-[X] Gdm center atom                                 PS
-[X] Adjustable cutoff distance                      PS
-[-] Parallel programming                            PS
-[X] Exclusion criteria with COM                     KN, PS
-[X] Generate pair list of residue - Gdm contacts    PS
-[X] Create index file for each configuration        PS
-[X] Multiple protein handler                        PS
-[ ] Time series extraction of Gdm contacts
-[ ] Frequency distribution
+[X] Read a series of GRO files                              PS
+[X] Dictionary of side chain heavy atoms                    PS
+[X] Gdm center atom                                         PS
+[X] Adjustable cutoff distance                              PS
+[X] Parallel program execution                              PS
+[X] Exclusion criteria with COM                             KN, PS
+[X] Generate pair list of residue - Gdm contacts            PS
+[-] Create index file for each configuration                PS
+[X] Multiple protein handler                                PS
+[ ] Time series extraction of Gdm contacts                  PS
+[*] Frequency distribution                                  PS
+    --> This feature was added in separate Excel worksheet  PS
 
 1. Create list of all side chain heavy atoms, referenced from dictionary
     a. If list exists as file, import file, do not create
