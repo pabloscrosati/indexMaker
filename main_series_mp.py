@@ -177,8 +177,21 @@ def average_position(x_coord, y_coord, z_coord):
     return ave_x, ave_y, ave_z
 
 
-# Step 1 of the prefilter; finds max distance and sets cutoff
+# Initial prefilter step
+# Find maximum distance between protein residues and protein center, then applies coarse_cutoff for cutoff distance
+# Cutoff is used to exclude residues during distance calculations to speed up residue-level calculations
 def max_distance_prefilter(x_list, y_list, z_list, x_ave, y_ave, z_ave, cutoff=coarse_cutoff):
+    """
+    Find maximum distance within a protein and apply coarse_cutoff, then return final cutoff distance
+    :param x_list: List containing protein x coordinates (indices are handled at the time the function is called)
+    :param y_list: List containing protein y coordinates (indices are handled at the time the function is called)
+    :param z_list: List containing protein z coordinates (indices are handled at the time the function is called)
+    :param x_ave: Float value containing average x coordinate
+    :param y_ave: Float value containing average y coordinate
+    :param z_ave: Float value containing average z coordinate
+    :param cutoff: User-defined (or default value) float value to define coarse cutoff
+    :return: Adjusted cutoff value for excluding guanidinium from distance calculations
+    """
     distance_log = []
     x_array = numpy.array(x_list).astype(float)
     y_array = numpy.array(y_list).astype(float)
@@ -197,8 +210,13 @@ def max_distance_prefilter(x_list, y_list, z_list, x_ave, y_ave, z_ave, cutoff=c
     return buffered_max_distance
 
 
-# Find the indices of all GUAN residues
+# Find the first and last index of all guanidinium residues
 def find_guan_indices(resname):
+    """
+    Find the indices of the start and end of guanidinium residues
+    :param resname: Full list of residue names
+    :return: Start and end indices denoting the region where guanidinium residues are found
+    """
     indices = [i for i, x in enumerate(resname) if x == "GUAN"]
     return min(indices), max(indices)
 
