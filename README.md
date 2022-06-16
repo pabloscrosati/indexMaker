@@ -8,7 +8,7 @@
 `main.py [-h] -f  -d  -o  [--csv] [--st] [--coarse-cutoff] [--short-cutoff]`
 
 ```
-  -h , --help            show this help message and exit
+  -h , --help           show this help message and exit
   -f , --file-pattern   filename pattern for input files
   -d , --directory      directory containing files to import
   -o , --output         output file
