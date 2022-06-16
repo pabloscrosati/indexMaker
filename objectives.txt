@@ -1,3 +1,4 @@
+=== BASIC FUNCTIONALITY ===
 [X] Read a series of GRO files                              PS
 [X] Dictionary of side chain heavy atoms                    PS
 [X] Gdm center atom                                         PS
@@ -5,9 +6,9 @@
 [X] Parallel program execution                              PS
 [X] Exclusion criteria with COM                             KN, PS
 [X] Generate pair list of residue - Gdm contacts            PS
-[-] Create index file for each configuration                PS
+[X] Create index file for each configuration                PS
 [X] Multiple protein handler                                PS
-[ ] Time series extraction of Gdm contacts                  PS
+[X] Time series extraction of Gdm contacts                  PS
 [*] Frequency distribution                                  PS
     --> This feature was added in separate Excel worksheet  PS
 
@@ -22,3 +23,16 @@
 6. Extract time series data
 7. Generate summary frequency distribution plot
 
+=== TO BE DONE ===
+[X] Properly implement GROMACS-compatible index file generation and bug fix
+[X] Check whether functionality works with single GRO files and single-protein GRO files
+[X] Implement single-threaded option
+[X] Add all command-line functions and defaults
+[X] Add CSV formatter
+[X] Add protein indices to GROMACS-compatible index file
+
+=== TESTING CHECKLIST ===
+[X] Single protein chain, single-threaded
+[X] Single protein chain, multi-threaded
+[X] Multiple protein chains, single-threaded
+[X] Multiple protein chains, multi-threaded
