@@ -1,6 +1,6 @@
 # Header section
 __author__ = "Pablo M. Scrosati"
-__version__ = "0.9.1 beta"
+__version__ = "0.9.2 beta"
 __update__ = "June 15, 2022"
 __title__ = "Auto Guanidinium Contact Detection"
 __description__ = """
@@ -509,4 +509,4 @@ if __name__ == "__main__":
 
     # Print performance data
     execution_end = time.perf_counter()
-    print(f"Program executed in {round(execution_end - execution_start, 5)} seconds.")
+    print("Program executed in %s seconds." % round(execution_end - execution_start, 5))
