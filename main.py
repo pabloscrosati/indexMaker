@@ -1,7 +1,7 @@
 # Header section
 __author__ = "Pablo M. Scrosati"
-__version__ = "0.9.2 beta"
-__update__ = "June 15, 2022"
+__version__ = "0.9.3 beta"
+__update__ = "June 20, 2022"
 __title__ = "Auto Guanidinium Contact Detection"
 __description__ = """
 Automatic protein chain detection with residue-specific detection of guanidinium contacts.
@@ -74,15 +74,26 @@ def cmd_parse(argv=None, prog_description=__description__):
     Read command line arguments and parse
     :return: List of command line arguments
     """
-    parser = argparse.ArgumentParser(description=prog_description)
-    parser.add_argument('-f', '--file-pattern', metavar='', help='filename pattern for input files', required=True)
-    parser.add_argument('-d', '--directory', metavar='', help='directory containing files to import', required=True)
-    parser.add_argument('-o', '--output', metavar='', help='output file', required=True)
-    parser.add_argument('--csv', help='output CSV file alongside tab-delimited file', action='store_true')
-    parser.add_argument('--st', help='run program in single-threaded mode', action='store_true')
-    parser.add_argument('--coarse-cutoff', metavar='', help='define coarse cutoff distance')
-    parser.add_argument('--short-cutoff', metavar='', help='define short cutoff distance')
-    return parser.parse_args(argv)
+    if sys.version_info.minor < 8:
+        parser = argparse.ArgumentParser(description=prog_description)
+        parser.add_argument('-f', '--file-pattern', help='filename pattern for input files', required=True)
+        parser.add_argument('-d', '--directory', help='directory containing files to import', required=True)
+        parser.add_argument('-o', '--output', help='output file', required=True)
+        parser.add_argument('--csv', help='output CSV file alongside tab-delimited file', action='store_true')
+        parser.add_argument('--st', help='run program in single-threaded mode', action='store_true')
+        parser.add_argument('--coarse-cutoff', help='define coarse cutoff distance')
+        parser.add_argument('--short-cutoff', help='define short cutoff distance')
+        return parser.parse_args(argv)
+    else:
+        parser = argparse.ArgumentParser(description=prog_description)
+        parser.add_argument('-f', '--file-pattern', metavar='', help='filename pattern for input files', required=True)
+        parser.add_argument('-d', '--directory', metavar='', help='directory containing files to import', required=True)
+        parser.add_argument('-o', '--output', metavar='', help='output file', required=True)
+        parser.add_argument('--csv', help='output CSV file alongside tab-delimited file', action='store_true')
+        parser.add_argument('--st', help='run program in single-threaded mode', action='store_true')
+        parser.add_argument('--coarse-cutoff', metavar='', help='define coarse cutoff distance')
+        parser.add_argument('--short-cutoff', metavar='', help='define short cutoff distance')
+        return parser.parse_args(argv)
 
 
 # Generate list of filenames in a folder matching pattern and return list of file names
