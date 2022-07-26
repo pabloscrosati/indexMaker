@@ -466,6 +466,13 @@ if __name__ == "__main__":
     # Find all GRO files contained within folder
     gro_files = file_pattern(args.file_pattern, args.directory)
 
+### PATCH ###
+
+    # List sorting
+    gro_files.sort()
+
+### PATCH ###
+    
     # Primary output data lists
     time_list = []
     gro_index_list = []
